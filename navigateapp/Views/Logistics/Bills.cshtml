@@ -1,0 +1,79 @@
+﻿@model IEnumerable<navigateapp.Models.BillOfLading>
+@{
+    ViewData["Title"] = "Bills of Lading";
+}
+
+<div class="container-fluid mt-4">
+    <div class="glass-panel p-4 rounded-4">
+        <h2 class="text-white mb-4">Bills of Lading</h2>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="glass-panel p-3 rounded-3 mb-4">
+                    <h4 class="text-info">Create New Bill</h4>
+                    <form asp-action="CreateBill" method="post">
+                        <div class="form-group mb-3">
+                            <label class="control-label text-white">Order Number</label>
+                            <input name="OrderNumber" class="form-control bg-dark text-white border-secondary" required />
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="control-label text-white">Shipper Name</label>
+                            <input name="ShipperName" class="form-control bg-dark text-white border-secondary" />
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="control-label text-white">Receiver Name</label>
+                            <input name="ReceiverName" class="form-control bg-dark text-white border-secondary" />
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="control-label text-white">Description</label>
+                            <textarea name="Description" class="form-control bg-dark text-white border-secondary" rows="3"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 glow-button">Save Bill</button>
+                    </form>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="glass-panel p-3 rounded-3">
+                    <h4 class="text-black mb-3">Stored Documents</h4>
+                    <div class="table-responsive">
+                        <table class="table text-black">
+                            <thead>
+                                <tr>
+                                    <th class="text-black" style="border-bottom: 2px solid black;">Order #</th>
+                                    <th class="text-black" style="border-bottom: 2px solid black;">Shipper</th>
+                                    <th class="text-black" style="border-bottom: 2px solid black;">Receiver</th>
+                                    <th class="text-black" style="border-bottom: 2px solid black;">Date</th>
+                                    <th class="text-black" style="border-bottom: 2px solid black;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model != null)
+                                {
+                                    @foreach (var item in Model)
+                                    {
+                                        <tr>
+                                            <td>@item.OrderNumber</td>
+                                            <td>@item.ShipperName</td>
+                                            <td>@item.ReceiverName</td>
+                                            <td>@item.CreatedDate.ToShortDateString()</td>
+                                            <td>
+                                                @if (item.IsDelivered)
+                                                {
+                                                    <span class="badge bg-success">Delivered</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-warning text-dark">Pending</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

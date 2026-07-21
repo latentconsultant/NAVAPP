@@ -1,0 +1,409 @@
+﻿@{
+    ViewData["Title"] = "Logistics Map";
+}
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+
+<style>
+    #map { height: 700px; width: 100%; border: 1px solid var(--glass-border); border-radius: 12px; box-shadow: 0 0 20px rgba(0, 0, 0, 0.5); }
+    .info-panel { background: var(--panel-bg); padding: 15px; border: 1px solid var(--glass-border); margin-bottom: 15px; }
+    .legend { background: transparent; padding: 10px; line-height: 18px; color: var(--text-main); }
+    .legend i { width: 18px; height: 18px; float: left; margin-right: 8px; opacity: 0.8; border-radius: 3px; }
+    hr { border-top: 1px solid var(--glass-border); opacity: 0.5; }
+    
+    /* Brighter roadways for Leaflet Routing Machine */
+    .leaflet-routing-geocoders input, .stop-addr, #address-input {
+        color: white !important;
+    }
+    .leaflet-routing-geocoders input::placeholder, .stop-addr::placeholder, #address-input::placeholder {
+        color: rgba(255, 255, 255, 0.7) !important;
+    }
+    .leaflet-routing-container {
+        color: white !important;
+    }
+    .leaflet-routing-alt h2, .leaflet-routing-alt h3, .leaflet-routing-alt p {
+        color: white !important;
+    }
+    
+    /* Brighter route lines */
+    .leaflet-interactive {
+        stroke-opacity: 0.9 !important;
+        stroke-width: 6 !important;
+    }
+    
+    /* Collapsible Directions Box */
+    .leaflet-routing-container {
+        transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
+        overflow: hidden;
+        max-height: 1000px;
+        position: relative;
+    }
+    .leaflet-routing-container.collapsed {
+        max-height: 40px;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    .routing-collapse-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        z-index: 1001;
+        background: rgba(0, 242, 255, 0.2);
+        border: 1px solid var(--glass-border);
+        color: white;
+        border-radius: 4px;
+        padding: 2px 8px;
+        cursor: pointer;
+        font-size: 12px;
+        backdrop-filter: blur(5px);
+    }
+    .routing-collapse-btn:hover {
+        background: rgba(0, 242, 255, 0.4);
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-9">
+            <div id="map"></div>
+        </div>
+        <div class="col-md-3">
+            <div class="info-panel">
+                <h4>Multi-Stop Routing</h4>
+                <div class="mb-2">
+                    <label class="small">Vehicle ID for Route:</label>
+                    <input type="text" id="route-vehicle-id" class="form-control form-control-sm" placeholder="e.g. TRK-001" value="TRK-001">
+                </div>
+                <div id="stop-inputs">
+                    <input type="text" class="form-control form-control-sm mb-1 stop-addr" placeholder="Stop 1 (Address)">
+                    <input type="text" class="form-control form-control-sm mb-1 stop-addr" placeholder="Stop 2 (Address)">
+                    <input type="text" class="form-control form-control-sm mb-1 stop-addr" placeholder="Stop 3 (Address)">
+                    <input type="text" class="form-control form-control-sm mb-1 stop-addr" placeholder="Stop 4 (Address)">
+                </div>
+                <button class="btn btn-success btn-sm w-100 mt-2" onclick="calculateMultiStopRoute()">Get Directions</button>
+                <button class="btn btn-warning btn-sm w-100 mt-1" onclick="clearRoutes()">Clear Route</button>
+                <hr />
+                <h4>Address Search</h4>
+                <div class="input-group mb-3">
+                    <input type="text" id="address-input" class="form-control" placeholder="Enter address...">
+                    <button class="btn btn-primary" onclick="searchAddress()">Search</button>
+                </div>
+                <hr />
+                <h4>Fleet Overview</h4>
+                <div id="fleet-status">
+                    <p>Vehicles Tracked: <span id="vehicle-count">0</span></p>
+                </div>
+            </div>
+            <div class="info-panel">
+                <h4>Zones Legend</h4>
+                <div class="legend">
+                    <div><i style="background: rgba(0, 255, 0, 0.4); border: 1px solid #00ff00;"></i> West Zone</div>
+                    <div><i style="background: rgba(191, 0, 255, 0.4); border: 1px solid #bf00ff;"></i> Mountain Zone</div>
+                    <div><i style="background: rgba(0, 102, 255, 0.4); border: 1px solid #0066ff;"></i> Central Zone</div>
+                    <div><i style="background: rgba(255, 165, 0, 0.4); border: 1px solid #ffa500;"></i> Great Lakes & South</div>
+                    <div><i style="background: rgba(255, 0, 0, 0.4); border: 1px solid #ff0000;"></i> East Coast</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <script>
+        // Search functionality
+        function searchAddress() {
+            var address = document.getElementById('address-input').value;
+            if (!address) return;
+
+            fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(address))
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        var result = data[0];
+                        map.setView([result.lat, result.lon], 12);
+                        L.marker([result.lat, result.lon]).addTo(map)
+                            .bindPopup(result.display_name).openPopup();
+                    } else {
+                        alert("Address not found.");
+                    }
+                });
+        }
+
+        var map = L.map('map').setView([37.8, -96], 4);
+        
+        // Use a futuristic dark map style
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
+
+        // Define Zones (Complete US Coverage)
+        var zones = [
+            {
+                name: "West",
+                color: "green",
+                coords: [[49, -125], [49, -114], [31, -114], [31, -125]] // WA, OR, CA, NV, ID
+            },
+            {
+                name: "Mountain",
+                color: "purple",
+                coords: [[49, -114], [49, -104], [31, -104], [31, -114]] // MT, WY, UT, AZ, NM, CO
+            },
+            {
+                name: "Central",
+                color: "blue",
+                coords: [[49, -104], [49, -90], [25, -90], [25, -104]] // ND, SD, NE, KS, OK, TX, MN, IA, MO, AR, LA
+            },
+            {
+                name: "Great Lakes & South",
+                color: "orange",
+                coords: [[49, -90], [49, -80], [24, -80], [24, -90]] // WI, IL, MI, IN, KY, TN, MS, AL, GA, FL
+            },
+            {
+                name: "East Coast",
+                color: "red",
+                coords: [[48, -80], [48, -67], [30, -67], [30, -80]] // ME, NY, PA, OH, WV, VA, NC, SC, MD, DE, NJ, CT, RI, MA, VT, NH
+            }
+        ];
+
+        zones.forEach(function(zone) {
+            L.polygon(zone.coords, {
+                color: zone.color,
+                fillColor: zone.color,
+                fillOpacity: 0.2
+            }).addTo(map).bindPopup(zone.name + " Logistics Zone");
+        });
+
+        // Custom Triangle Icon for Vehicles (Neon Cyan for active tracking)
+        var triangleIcon = L.divIcon({
+            className: 'custom-div-icon',
+            html: "<div style='width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 20px solid #00ff00; filter: drop-shadow(0 0 5px #00ff00);'></div>",
+            iconSize: [20, 20],
+            iconAnchor: [10, 20]
+        });
+
+        // Vehicle Tracking (Live Data)
+        var vehicles = [];
+        var vehicleMarkers = {};
+
+        async function loadVehicles() {
+            try {
+                const response = await fetch('/Logistics/GetVehicles');
+                var freshVehicles = await response.json();
+                vehicles = freshVehicles;
+                
+                document.getElementById('vehicle-count').innerText = vehicles.length;
+
+                freshVehicles.forEach(function(v) {
+                    var popupContent = "<b>Vehicle: " + v.vehicleId + "</b><br>Status: " + v.status;
+                    if (v.currentRoute) {
+                        popupContent += "<br><b>Current Route:</b><br>" + v.currentRoute.split('|').join('<br>');
+                        popupContent += "<br><button class='btn btn-info btn-xs mt-2' onclick=\"loadVehicleRoute('" + v.vehicleId + "', '" + v.currentRoute + "')\">View Route</button>";
+                    }
+
+                    if (vehicleMarkers[v.vehicleId]) {
+                        // Update existing marker
+                        var marker = vehicleMarkers[v.vehicleId];
+                        
+                        // Only update position if NOT currently simulating OR if data is very fresh (real movement)
+                        var isRealMovement = (new Date() - new Date(v.lastUpdate)) < 15000;
+                        if (isRealMovement || !activeRoutes[v.vehicleId] || !activeRoutes[v.vehicleId].interval) {
+                            marker.setLatLng([v.latitude, v.longitude]);
+                            if (isRealMovement && activeRoutes[v.vehicleId] && activeRoutes[v.vehicleId].interval) {
+                                // Stop simulation if we have real tracking
+                                clearInterval(activeRoutes[v.vehicleId].interval);
+                                activeRoutes[v.vehicleId].interval = null;
+                            }
+                        }
+                        marker.getPopup().setContent(popupContent);
+                    } else {
+                        // New marker
+                        var marker = L.marker([v.latitude, v.longitude], { icon: triangleIcon }).addTo(map)
+                            .bindPopup(popupContent);
+                        vehicleMarkers[v.vehicleId] = marker;
+                    }
+
+                    // Auto-update route lines if route changed (any vehicle)
+                    var selectedVehicleId = document.getElementById('route-vehicle-id').value;
+                    if (v.currentRoute) {
+                        var currentRouteDisplay = activeRoutes[v.vehicleId] ? activeRoutes[v.vehicleId].routeString : "";
+                        var isSelected = v.vehicleId.toLowerCase() === selectedVehicleId.toLowerCase();
+                        
+                        // Check if current sidebar inputs match the new route to avoid redundant loads
+                        var sidebarRoute = Array.from(document.querySelectorAll('.stop-addr')).map(i => i.value.trim()).filter(val => val !== "").join('|');
+                        
+                        if (v.currentRoute !== currentRouteDisplay) {
+                            console.log("Route update detected for vehicle " + v.vehicleId);
+                            if (isSelected && v.currentRoute !== sidebarRoute) {
+                                loadVehicleRoute(v.vehicleId, v.currentRoute, true);
+                            } else {
+                                // Just update the map line for this vehicle
+                                calculateMultiStopRoute(v.vehicleId, v.currentRoute.split('|'), true);
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading vehicles:', error);
+            }
+        }
+
+        loadVehicles();
+        setInterval(loadVehicles, 5000);
+
+        // Directions & Real-time Tracking Simulation
+        var activeRoutes = {}; // Map vehicleId to routing control, interval, and routeString
+
+        async function calculateMultiStopRoute(vIdParam = null, addressesParam = null, skipSave = false) {
+            var vId = vIdParam || document.getElementById('route-vehicle-id').value;
+            var vehicle = vehicles.find(v => v.vehicleId === vId);
+            
+            var addresses = addressesParam;
+            if (!addresses) {
+                var addrInputs = document.querySelectorAll('.stop-addr');
+                addresses = Array.from(addrInputs).map(i => i.value.trim()).filter(val => val !== "");
+            }
+            var routeStr = addresses.join('|');
+
+            // Update tracking string immediately to prevent redundant calls from the 5s poll
+            var oldControl = activeRoutes[vId] ? activeRoutes[vId].control : null;
+            var oldInterval = activeRoutes[vId] ? activeRoutes[vId].interval : null;
+            
+            if (!activeRoutes[vId]) activeRoutes[vId] = {};
+            activeRoutes[vId].routeString = routeStr;
+            
+            var points = [];
+
+            // Always start with the vehicle's current location if it exists
+            if (vehicle) {
+                points.push(L.latLng(vehicle.latitude, vehicle.longitude));
+            } else if (!skipSave) {
+                alert("Vehicle " + vId + " not found. Please ensure the vehicle ID is correct.");
+                return;
+            } else {
+                return;
+            }
+            
+            for (var addr of addresses) {
+                var res = await fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(addr))
+                    .then(r => r.json());
+                if (res && res.length > 0) {
+                    points.push(L.latLng(res[0].lat, res[0].lon));
+                }
+            }
+
+            if (points.length < 2) {
+                if (!skipSave) alert("Please enter at least one destination address (routing starts from the vehicle's location).");
+                return;
+            }
+
+            // Save the route to the backend if not skipping
+            if (!skipSave) {
+                fetch('/api/Mobile/UpdateLocation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        vehicleId: vId, 
+                        latitude: vehicle.latitude, 
+                        longitude: vehicle.longitude,
+                        currentRoute: routeStr
+                    })
+                });
+            }
+
+            // Clean up old route for this vehicle
+            if (oldInterval) clearInterval(oldInterval);
+            if (oldControl) map.removeControl(oldControl);
+
+            var routingControl = L.Routing.control({
+                waypoints: points,
+                routeWhileDragging: false,
+                addWaypoints: false,
+                units: 'imperial', // Miles instead of Kilometers
+                lineOptions: {
+                    styles: [{ color: '#ff0000', opacity: 0.8, weight: 6 }] // Red route lines
+                }
+            }).on('routesfound', function(e) {
+                var routes = e.routes;
+                var activeRouteData = routes[0].coordinates;
+                simulateTracking(vId, activeRouteData);
+                
+                // Add collapse button to all routing containers that don't have one
+                setTimeout(() => {
+                    var containers = document.querySelectorAll('.leaflet-routing-container');
+                    containers.forEach(function(container) {
+                        if (container && !container.querySelector('.routing-collapse-btn')) {
+                            var btn = document.createElement('button');
+                            btn.className = 'routing-collapse-btn';
+                            btn.innerHTML = 'Toggle Directions';
+                            btn.onclick = function(ev) {
+                                ev.stopPropagation();
+                                container.classList.toggle('collapsed');
+                                this.innerHTML = container.classList.contains('collapsed') ? 'Show Directions' : 'Hide Directions';
+                            };
+                            container.appendChild(btn);
+                        }
+                    });
+                }, 100);
+            }).addTo(map);
+
+            activeRoutes[vId] = {
+                control: routingControl,
+                interval: null,
+                routeString: addresses.join('|')
+            };
+        }
+
+        async function loadVehicleRoute(vId, routeString, skipSave = false) {
+            document.getElementById('route-vehicle-id').value = vId;
+            var addresses = routeString.split('|');
+            var addrInputs = document.querySelectorAll('.stop-addr');
+            
+            // Clear inputs first
+            addrInputs.forEach(input => input.value = "");
+            
+            // Fill inputs
+            addresses.forEach((addr, i) => {
+                if (i < addrInputs.length) {
+                    addrInputs[i].value = addr;
+                }
+            });
+            
+            calculateMultiStopRoute(vId, addresses, skipSave);
+        }
+
+        function simulateTracking(vehicleId, routeData) {
+            if (!routeData) return;
+            var i = 0;
+            var interval = setInterval(function() {
+                if (i >= routeData.length) {
+                    clearInterval(interval);
+                    // We keep the routing control (lines) visible until manually cleared
+                    return;
+                }
+                var coord = routeData[i];
+                if (vehicleMarkers[vehicleId]) {
+                    vehicleMarkers[vehicleId].setLatLng([coord.lat, coord.lng]);
+                }
+                i += 2; // Speed
+            }, 200);
+
+            if (activeRoutes[vehicleId]) {
+                activeRoutes[vehicleId].interval = interval;
+            }
+        }
+
+        function clearRoutes() {
+            for (var vId in activeRoutes) {
+                if (activeRoutes[vId].interval) clearInterval(activeRoutes[vId].interval);
+                if (activeRoutes[vId].control) map.removeControl(activeRoutes[vId].control);
+            }
+            activeRoutes = {};
+            location.reload(); 
+        }
+    </script>
+}

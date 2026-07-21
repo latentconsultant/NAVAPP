@@ -1,0 +1,20 @@
+services:
+  navigateapp:
+    image: navigateapp:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: navigateapp
+    ports:
+      - "8080:8080"
+    volumes:
+      - navigateapp-data:/app/data
+      - navigateapp-uploads:/app/wwwroot/uploads
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      # - ASPNETCORE_FORWARDEDHEADERS_ENABLED=true # Often useful if behind another proxy
+    restart: always
+
+volumes:
+  navigateapp-data:
+  navigateapp-uploads:

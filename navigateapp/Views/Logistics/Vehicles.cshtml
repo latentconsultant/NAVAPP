@@ -1,0 +1,112 @@
+﻿@model IEnumerable<navigateapp.Models.Vehicle>
+@{
+    ViewData["Title"] = "Vehicle Management";
+}
+
+<div class="container-fluid mt-4">
+    <div class="glass-panel p-4 rounded-4">
+        <h2 class="text-white mb-4">Vehicle Management</h2>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="glass-panel p-3 rounded-3 mb-4">
+                    <h4 class="text-info">Add New Vehicle</h4>
+                    <form asp-action="CreateVehicle" method="post">
+                        <div class="form-group mb-3">
+                            <label class="control-label text-white">Vehicle ID</label>
+                            <input name="VehicleId" class="form-control bg-dark text-white border-secondary" required placeholder="e.g. TRK-004" />
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="control-label text-white">Address</label>
+                            <input name="Address" id="vehicle-address" class="form-control bg-dark text-white border-secondary" required placeholder="1600 Pennsylvania Ave NW, Washington, DC" />
+                        </div>
+                        <input type="hidden" name="Latitude" id="lat-input" value="0" />
+                        <input type="hidden" name="Longitude" id="lng-input" value="0" />
+                        <div class="form-group mb-3">
+                            <label class="control-label text-white">Status</label>
+                            <select name="Status" class="form-control bg-dark text-white border-secondary">
+                                <option value="Idle">Idle</option>
+                                <option value="In Transit">In Transit</option>
+                                <option value="Delivering">Delivering</option>
+                                <option value="Maintenance">Maintenance</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn btn-secondary w-100 mb-2 glow-button" onclick="geocodeAddress()">Validate Address</button>
+                        <button type="submit" id="submit-btn" class="btn btn-primary w-100 glow-button">Add Vehicle</button>
+                        <p id="geocode-msg" class="small mt-1 text-center"></p>
+                    </form>
+                </div>
+
+                <script>
+                    function geocodeAddress() {
+                        var address = document.getElementById('vehicle-address').value;
+                        if (!address) return;
+                        
+                        var msg = document.getElementById('geocode-msg');
+                        msg.innerText = "Validating...";
+                        msg.className = "small mt-1 text-info";
+
+                        fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(address))
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data && data.length > 0) {
+                                    var result = data[0];
+                                    document.getElementById('lat-input').value = result.lat;
+                                    document.getElementById('lng-input').value = result.lon;
+                                    msg.innerText = "Address validated!";
+                                    msg.className = "small mt-1 text-success";
+                                } else {
+                                    alert("Address not found.");
+                                    msg.innerText = "Validation failed.";
+                                    msg.className = "small mt-1 text-danger";
+                                }
+                            })
+                            .catch(err => {
+                                msg.innerText = "Error during validation.";
+                                msg.className = "small mt-1 text-danger";
+                            });
+                    }
+                </script>
+            </div>
+            <div class="col-md-8">
+                <div class="glass-panel p-3 rounded-3">
+                    <h4 class="text-black mb-3">Active Fleet</h4>
+                    <div class="table-responsive">
+                        <table class="table text-black">
+                            <thead>
+                                <tr>
+                                    <th class="text-black" style="border-bottom: 2px solid black;">Vehicle ID</th>
+                                    <th class="text-black" style="border-bottom: 2px solid black;">Address</th>
+                                    <th class="text-black" style="border-bottom: 2px solid black;">Status</th>
+                                    <th class="text-black" style="border-bottom: 2px solid black;">Last Update</th>
+                                    <th class="text-black" style="border-bottom: 2px solid black;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model != null)
+                                {
+                                    @foreach (var item in Model)
+                                    {
+                                        <tr>
+                                            <td>@item.VehicleId</td>
+                                            <td>@item.Address</td>
+                                            <td>
+                                                <span class="badge @(item.Status == "Idle" ? "bg-secondary" : "bg-info")">@item.Status</span>
+                                            </td>
+                                            <td>@item.LastUpdate.ToShortTimeString()</td>
+                                            <td>
+                                                <form asp-action="DeleteVehicle" asp-route-id="@item.Id" method="post" onsubmit="return confirm('Are you sure?');">
+                                                    <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,372 @@
+﻿@{
+    ViewData["Title"] = "Driver Portal";
+    Layout = "_Layout";
+}
+
+<style>
+    .mobile-container {
+        max-width: 400px;
+        margin: 20px auto;
+        background: var(--glass-bg);
+        backdrop-filter: blur(15px);
+        border: 1px solid var(--glass-border);
+        border-radius: 20px;
+        padding: 20px;
+        color: white;
+    }
+    .driver-btn {
+        background: linear-gradient(135deg, #00f2ff, #7000ff);
+        border: none;
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        width: 100%;
+        margin-top: 10px;
+        font-weight: bold;
+    }
+    #mobile-map {
+        height: 250px;
+        border-radius: 15px;
+        margin-bottom: 15px;
+        border: 1px solid var(--glass-border);
+    }
+    /* Collapsible Directions Box */
+    .leaflet-routing-container {
+        transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
+        overflow: hidden;
+        max-height: 1000px;
+        position: relative;
+    }
+    .leaflet-routing-container.collapsed {
+        max-height: 40px;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    .routing-collapse-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        z-index: 1001;
+        background: rgba(0, 242, 255, 0.2);
+        border: 1px solid var(--glass-border);
+        color: white;
+        border-radius: 4px;
+        padding: 2px 8px;
+        cursor: pointer;
+        font-size: 12px;
+        backdrop-filter: blur(5px);
+    }
+    .routing-collapse-btn:hover {
+        background: rgba(0, 242, 255, 0.4);
+    }
+</style>
+
+<div class="mobile-container">
+    <h3 class="text-center mb-4">Driver Portal</h3>
+    
+    <div id="driver-login">
+        <div class="mb-3">
+            <label>Vehicle ID</label>
+            <input type="text" id="driver-vehicle-id" class="form-control bg-dark text-white border-secondary" placeholder="Enter Vehicle ID">
+        </div>
+        <button class="driver-btn" onclick="startShift()">Start Shift</button>
+    </div>
+
+    <div id="driver-active" style="display: none;">
+        <div id="mobile-map"></div>
+        
+        <div class="card bg-dark border-secondary mb-3">
+            <div class="card-body p-3">
+                <h6 class="text-info">Current Delivery</h6>
+                <div class="mb-2">
+                    <input type="text" id="dest-1" class="form-control form-control-sm bg-dark text-white border-secondary mb-1" placeholder="Stop 1 Address" oninput="debouncedGetDirections()">
+                    <input type="text" id="dest-2" class="form-control form-control-sm bg-dark text-white border-secondary mb-1" placeholder="Stop 2 Address" oninput="debouncedGetDirections()">
+                    <input type="text" id="dest-3" class="form-control form-control-sm bg-dark text-white border-secondary mb-1" placeholder="Stop 3 Address" oninput="debouncedGetDirections()">
+                    <input type="text" id="dest-4" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Stop 4 Address" oninput="debouncedGetDirections()">
+                </div>
+                <p id="active-order" class="small mb-0">No active orders assigned.</p>
+            </div>
+        </div>
+
+        <button class="driver-btn btn-success mb-2" onclick="getDirections()">Get Directions</button>
+        <button class="driver-btn btn-warning" onclick="openPhotoUpload()">Deliver & Upload BOL</button>
+    </div>
+
+    <div id="photo-upload-section" style="display: none;">
+        <h5>Complete Delivery</h5>
+        <div class="mb-3">
+            <label>Order Number</label>
+            <input type="text" id="upload-order-num" class="form-control bg-dark text-white border-secondary">
+        </div>
+        <div class="mb-3">
+            <label>Photo of Signed BOL</label>
+            <input type="file" id="bol-photo" class="form-control bg-dark text-white border-secondary" accept="image/*">
+        </div>
+        <button class="driver-btn" onclick="uploadBol()">Submit Proof</button>
+        <button class="btn btn-link text-white w-100" onclick="backToMap()">Back</button>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <script>
+        var map;
+        var driverMarker;
+        var watchId;
+        var routingControl;
+        var currentLat, currentLng;
+        var lastCalculatedRoute = "";
+
+        function startShift() {
+            var vId = document.getElementById('driver-vehicle-id').value;
+            if (!vId) { alert("Please enter Vehicle ID"); return; }
+            
+            // Persist Vehicle ID for reloads
+            localStorage.setItem('driverVehicleId', vId);
+
+            document.getElementById('driver-login').style.display = 'none';
+            document.getElementById('driver-active').style.display = 'block';
+            
+            initMap();
+            
+            // Fetch existing route if any
+            fetch('/Logistics/GetVehicles')
+                .then(res => res.json())
+                .then(vehicles => {
+                    var v = vehicles.find(veh => veh.vehicleId === vId);
+                    if (v && v.currentRoute) {
+                        lastCalculatedRoute = v.currentRoute;
+                        var stops = v.currentRoute.split('|');
+                        stops.forEach((stop, i) => {
+                            var input = document.getElementById('dest-' + (i + 1));
+                            if (input) input.value = stop;
+                        });
+                        // Wait a bit for map to init then get directions
+                        setTimeout(() => getDirections(true), 1000);
+                    }
+                });
+
+            startTracking(vId);
+        }
+
+        // Auto-start if vehicle ID is in localStorage
+        window.onload = function() {
+            var savedId = localStorage.getItem('driverVehicleId');
+            if (savedId) {
+                document.getElementById('driver-vehicle-id').value = savedId;
+                // Optional: auto-start? Maybe better to let them click.
+            }
+        };
+
+        function initMap() {
+            map = L.map('mobile-map').setView([37.0902, -95.7129], 13);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+        }
+
+        function startTracking(vId) {
+            if ("geolocation" in navigator) {
+                watchId = navigator.geolocation.watchPosition(function(position) {
+                    currentLat = position.coords.latitude;
+                    currentLng = position.coords.longitude;
+
+                    if (!driverMarker) {
+                        driverMarker = L.marker([currentLat, currentLng]).addTo(map);
+                    } else {
+                        driverMarker.setLatLng([currentLat, currentLng]);
+                    }
+                    
+                    if (!routingControl) {
+                        map.panTo([currentLat, currentLng]);
+                    }
+
+                    // Send to backend (Location only, don't overwrite route unless changed)
+                    fetch('/api/Mobile/UpdateLocation', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            vehicleId: vId, 
+                            latitude: currentLat, 
+                            longitude: currentLng
+                            // currentRoute omitted to avoid overwriting admin assignments
+                        })
+                    });
+                }, null, { enableHighAccuracy: true });
+            }
+
+            // Poll for route updates from admin
+            setInterval(() => {
+                fetch('/Logistics/GetVehicles')
+                    .then(res => res.json())
+                    .then(vehicles => {
+                        var v = vehicles.find(veh => veh.vehicleId === vId);
+                        if (v && v.currentRoute && v.currentRoute !== lastCalculatedRoute) {
+                            console.log("New route received from admin");
+                            lastCalculatedRoute = v.currentRoute;
+                            var stops = v.currentRoute.split('|');
+                            // Clear inputs
+                            for(let i=1; i<=4; i++) {
+                                let input = document.getElementById('dest-' + i);
+                                if (input) input.value = "";
+                            }
+                            // Fill inputs
+                            stops.forEach((stop, i) => {
+                                var input = document.getElementById('dest-' + (i + 1));
+                                if (input) input.value = stop;
+                            });
+                            getDirections(true);
+                        }
+                    });
+            }, 5000);
+        }
+
+        var debounceTimer;
+        function debouncedGetDirections() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                getDirections(true);
+            }, 1500);
+        }
+
+        function getDirections(isAutomatic = false) {
+            var addresses = [
+                document.getElementById('dest-1').value,
+                document.getElementById('dest-2').value,
+                document.getElementById('dest-3').value,
+                document.getElementById('dest-4').value
+            ].filter(a => a.trim() !== "");
+
+            if (addresses.length === 0) { 
+                if (!isAutomatic) alert("Please enter at least one stop address"); 
+                return; 
+            }
+            
+            lastCalculatedRoute = addresses.join('|');
+            
+            // Immediate update to server when route changes
+            var vId = document.getElementById('driver-vehicle-id').value;
+            if (vId && currentLat && currentLng && !isAutomatic) {
+                fetch('/api/Mobile/UpdateLocation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        vehicleId: vId, 
+                        latitude: currentLat, 
+                        longitude: currentLng,
+                        currentRoute: lastCalculatedRoute
+                    })
+                });
+            }
+            if (!currentLat || !currentLng) { 
+                if (isAutomatic) {
+                    console.log("Waiting for GPS location for automatic route...");
+                } else {
+                    alert("Waiting for GPS location..."); 
+                }
+                return; 
+            }
+
+            // Geocode all destinations
+            var geocodePromises = addresses.map(addr => 
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`)
+                    .then(response => response.json())
+            );
+
+            Promise.all(geocodePromises).then(results => {
+                var waypoints = [L.latLng(currentLat, currentLng)];
+                var foundAny = false;
+
+                results.forEach((data, index) => {
+                    if (data && data.length > 0) {
+                        waypoints.push(L.latLng(data[0].lat, data[0].lon));
+                        foundAny = true;
+                    } else {
+                        console.warn(`Address not found: ${addresses[index]}`);
+                    }
+                });
+
+                if (!foundAny) {
+                    if (!isAutomatic) alert("No valid addresses found.");
+                    return;
+                }
+
+                if (routingControl) {
+                    map.removeControl(routingControl);
+                }
+
+                routingControl = L.Routing.control({
+                    waypoints: waypoints,
+                    routeWhileDragging: false,
+                    units: 'imperial',
+                    lineOptions: {
+                        styles: [{ color: '#ff0000', opacity: 0.8, weight: 6 }]
+                    },
+                    createMarker: function() { return null; }
+                }).addTo(map);
+                
+                // Style the container for dark theme
+                setTimeout(() => {
+                    var container = document.querySelector('.leaflet-routing-container');
+                    if (container) {
+                        container.style.background = 'rgba(20, 20, 20, 0.8)';
+                        container.style.color = 'white';
+                        container.style.backdropFilter = 'blur(10px)';
+                        container.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+                        
+                        // Add collapse button
+                        if (!container.querySelector('.routing-collapse-btn')) {
+                            var btn = document.createElement('button');
+                            btn.className = 'routing-collapse-btn';
+                            btn.innerHTML = 'Toggle Directions';
+                            btn.onclick = function(ev) {
+                                ev.stopPropagation();
+                                container.classList.toggle('collapsed');
+                                this.innerHTML = container.classList.contains('collapsed') ? 'Show Directions' : 'Hide Directions';
+                            };
+                            container.appendChild(btn);
+                        }
+                    }
+                }, 500);
+
+            }).catch(err => {
+                console.error("Geocoding error:", err);
+                alert("Error finding addresses. Please try again.");
+            });
+        }
+
+        function openPhotoUpload() {
+            document.getElementById('driver-active').style.display = 'none';
+            document.getElementById('photo-upload-section').style.display = 'block';
+        }
+
+        function backToMap() {
+            document.getElementById('photo-upload-section').style.display = 'none';
+            document.getElementById('driver-active').style.display = 'block';
+        }
+
+        function uploadBol() {
+            var orderNum = document.getElementById('upload-order-num').value;
+            var photoFile = document.getElementById('bol-photo').files[0];
+            
+            if (!orderNum || !photoFile) { alert("Please provide order number and photo"); return; }
+
+            var formData = new FormData();
+            formData.append("OrderNumber", orderNum);
+            formData.append("Photo", photoFile);
+
+            fetch('/api/Mobile/UploadBol', {
+                method: 'POST',
+                body: formData
+            }).then(res => {
+                if(res.ok) {
+                    alert("Delivery Complete & BOL Uploaded!");
+                    location.reload();
+                } else {
+                    alert("Upload failed. Check order number.");
+                }
+            });
+        }
+    </script>
+}

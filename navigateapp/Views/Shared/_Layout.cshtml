@@ -1,0 +1,199 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - navigateapp</title>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/navigateapp.styles.css" asp-append-version="true" />
+    <style>
+        :root {
+            --bg-dark: #0b0e14;
+            --panel-bg: rgba(20, 24, 33, 0.85);
+            --accent-cyan: #00f2ff;
+            --accent-purple: #7000ff;
+            --text-main: #e0e6ed;
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body { 
+            background-color: var(--bg-dark); 
+            color: var(--text-main);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-image: radial-gradient(circle at 50% 50%, #1a202c 0%, #0b0e14 100%);
+            min-height: 100vh;
+        }
+
+        .navbar { 
+            background: var(--panel-bg) !important; 
+            backdrop-filter: blur(15px);
+            border-bottom: 1px solid var(--glass-border) !important; 
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .navbar-brand { 
+            color: var(--accent-cyan) !important; 
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px var(--accent-cyan);
+        }
+
+        .nav-link { 
+            color: var(--text-main) !important; 
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover { 
+            color: var(--accent-cyan) !important; 
+            text-shadow: 0 0 8px var(--accent-cyan);
+        }
+
+        .container { 
+            background: var(--panel-bg); 
+            backdrop-filter: blur(10px);
+            padding: 30px; 
+            border-radius: 15px; 
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+            margin-top: 30px; 
+        }
+
+        .footer { 
+            background: transparent; 
+            color: #636e72 !important; 
+            border: none !important; 
+            margin-top: 50px;
+        }
+
+        .card, .info-panel { 
+            background: rgba(30, 39, 46, 0.6) !important; 
+            color: var(--text-main) !important; 
+            border: 1px solid var(--glass-border) !important; 
+            border-radius: 12px !important; 
+            backdrop-filter: blur(5px);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-cyan) !important;
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+        }
+
+        h1, h2, h3, h4, h5, h6 { 
+            color: var(--accent-cyan); 
+            text-shadow: 0 0 5px rgba(0, 242, 255, 0.3);
+        }
+
+        .info-panel h1, .info-panel h2, .info-panel h3, .info-panel h4, .info-panel h5, .info-panel h6 { 
+            color: var(--accent-cyan); 
+        }
+
+        .leaflet-routing-container, .leaflet-routing-container h2, .leaflet-routing-container h3, .leaflet-routing-alt, .leaflet-popup-content-wrapper, .leaflet-popup-content { 
+            background: var(--panel-bg) !important;
+            color: var(--text-main) !important; 
+            border: 1px solid var(--glass-border);
+        }
+        
+        .leaflet-routing-alt:hover {
+            background: rgba(255, 255, 255, 0.05) !important;
+        }
+
+        .table { color: var(--text-main); }
+        .table td, .table th { border-color: var(--glass-border); }
+        .table thead th { color: var(--accent-cyan); border-bottom: 2px solid var(--accent-cyan); }
+
+        .btn-primary { 
+            background: linear-gradient(45deg, var(--accent-cyan), var(--accent-purple)); 
+            border: none; 
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
+            font-weight: 600;
+        }
+        
+        .btn-primary:hover { 
+            background: linear-gradient(45deg, var(--accent-purple), var(--accent-cyan)); 
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.6);
+            transform: scale(1.02);
+        }
+
+        .form-control {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+        }
+
+        .form-control:focus {
+            background: rgba(0, 0, 0, 0.3);
+            border-color: var(--accent-cyan);
+            color: var(--text-main);
+            box-shadow: 0 0 0 0.25rem rgba(0, 242, 255, 0.25);
+        }
+
+        .list-group-item {
+            background: transparent;
+            color: var(--text-main);
+            border-color: var(--glass-border);
+        }
+        .text-black {
+            color: black !important;
+            text-shadow: none !important;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm mb-3">
+            <div class="container-fluid">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">navigateapp</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Map</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Logistics" asp-action="Bills">Bills of Lading</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Logistics" asp-action="Customers">Customers</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Logistics" asp-action="Vehicles">Vehicles</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Logistics" asp-action="Admin">Admin Panel</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Logistics" asp-action="Driver">Driver App</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="footer text-muted">
+        <div class="container-fluid bg-transparent shadow-none border-0 text-center">
+            &copy; 2026 - navigateapp - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+        </div>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
