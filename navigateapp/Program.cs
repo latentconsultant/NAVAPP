@@ -49,6 +49,13 @@ else
     app.UseExceptionHandler("/Home/Error");
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
+    
+    // Allow seeing detailed errors temporarily if a specific header or environment variable is set
+    // This helps debugging production issues without exposing info to all users
+    if (Environment.GetEnvironmentVariable("SHOW_DETAILED_ERRORS") == "true")
+    {
+        app.UseDeveloperExceptionPage();
+    }
 }
 
 app.UseHttpsRedirection();
@@ -66,8 +73,16 @@ if (app.Environment.IsProduction())
 {
     using (var scope = app.Services.CreateScope())
     {
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        db.Database.Migrate();
+        try
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            db.Database.Migrate();
+        }
+        catch (Exception ex)
+        {
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "An error occurred while migrating the database.");
+        }
     }
 }
 
