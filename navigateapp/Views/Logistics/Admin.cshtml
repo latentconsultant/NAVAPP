@@ -13,10 +13,10 @@
         <div class="row">
             <div class="col-md-4">
                 <div class="glass-panel mb-4 p-3 rounded-3">
-                    <div class="card-body text-black">
-                        <h5 class="card-title text-black">Bills of Lading</h5>
-                        <h2 class="display-4 text-black">@(ViewBag.BillCount ?? 0)</h2>
-                        <p class="card-text text-black">Total documents stored.</p>
+                    <div class="card-body text-white">
+                        <h5 class="card-title text-info">Bills of Lading</h5>
+                        <h2 class="display-4 text-white">@(ViewBag.BillCount ?? 0)</h2>
+                        <p class="card-text text-white-50">Total documents stored.</p>
                     </div>
                     <div class="mt-3">
                         <a class="btn btn-info btn-sm w-100" asp-action="Bills">View Details</a>
@@ -25,10 +25,10 @@
             </div>
             <div class="col-md-4">
                 <div class="glass-panel mb-4 p-3 rounded-3">
-                    <div class="card-body text-black">
-                        <h5 class="card-title text-black">Customers</h5>
-                        <h2 class="display-4 text-black">@(ViewBag.CustomerCount ?? 0)</h2>
-                        <p class="card-text text-black">Total customers in database.</p>
+                    <div class="card-body text-white">
+                        <h5 class="card-title text-info">Customers</h5>
+                        <h2 class="display-4 text-white">@(ViewBag.CustomerCount ?? 0)</h2>
+                        <p class="card-text text-white-50">Total customers in database.</p>
                     </div>
                     <div class="mt-3">
                         <a class="btn btn-info btn-sm w-100" asp-action="Customers">Manage CRM</a>
@@ -37,10 +37,10 @@
             </div>
             <div class="col-md-4">
                 <div class="glass-panel mb-4 p-3 rounded-3">
-                    <div class="card-body text-black">
-                        <h5 class="card-title text-black">Fleet Size</h5>
-                        <h2 class="display-4 text-black">@(ViewBag.VehicleCount ?? 0)</h2>
-                        <p class="card-text text-black">Active vehicles tracked.</p>
+                    <div class="card-body text-white">
+                        <h5 class="card-title text-info">Fleet Size</h5>
+                        <h2 class="display-4 text-white">@(ViewBag.VehicleCount ?? 0)</h2>
+                        <p class="card-text text-white-50">Active vehicles tracked.</p>
                     </div>
                     <div class="mt-3">
                         <a class="btn btn-info btn-sm w-100" asp-action="Vehicles">Manage Fleet</a>
@@ -62,11 +62,11 @@
                     </ul>
                 </div>
                 <div class="col-md-6 text-center">
-                    <h5 class="text-black">System Status</h5>
-                    <div class="alert alert-dark border-info text-black bg-opacity-75">
+                    <h5 class="text-info">System Status</h5>
+                    <div class="alert alert-dark border-info text-white bg-opacity-75 bg-dark">
                         <strong>All systems operational.</strong><br />
                         Geocoding Service: Connected<br />
-                        Database: SQL Server (Healthy)
+                        Database: SQLite (Healthy)
                     </div>
                 </div>
             </div>
