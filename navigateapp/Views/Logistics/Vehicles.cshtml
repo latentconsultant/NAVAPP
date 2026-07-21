@@ -96,6 +96,7 @@
                                             <td>@item.LastUpdate.ToShortTimeString()</td>
                                             <td>
                                                 <form asp-action="DeleteVehicle" asp-route-id="@item.Id" method="post" onsubmit="return confirm('Are you sure?');">
+                                                    @Html.AntiForgeryToken()
                                                     <button type="submit" class="btn btn-danger btn-sm">Remove</button>
                                                 </form>
                                             </td>

@@ -133,7 +133,7 @@
             initMap();
             
             // Fetch existing route if any
-            fetch('/Logistics/GetVehicles')
+            fetch('/api/LogisticsApi/GetVehicles')
                 .then(res => res.json())
                 .then(vehicles => {
                     var v = vehicles.find(veh => veh.vehicleId === vId);
@@ -198,7 +198,7 @@
 
             // Poll for route updates from admin
             setInterval(() => {
-                fetch('/Logistics/GetVehicles')
+                fetch('/api/LogisticsApi/GetVehicles')
                     .then(res => res.json())
                     .then(vehicles => {
                         var v = vehicles.find(veh => veh.vehicleId === vId);

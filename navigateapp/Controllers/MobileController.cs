@@ -7,6 +7,7 @@ namespace navigateapp.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [IgnoreAntiforgeryToken]
     public class MobileController : ControllerBase
     {
         private readonly ApplicationDbContext _context;

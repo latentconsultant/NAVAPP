@@ -44,6 +44,11 @@ namespace navigateapp.Controllers
                     await _context.SaveChangesAsync();
                     return RedirectToAction(nameof(Bills));
                 }
+                else
+                {
+                    var errors = string.Join(" | ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
+                    Console.WriteLine($"[DEBUG_LOG] ModelState invalid in CreateBill: {errors}");
+                }
             }
             catch (Exception ex)
             {
@@ -79,6 +84,11 @@ namespace navigateapp.Controllers
                     _context.Add(customer);
                     await _context.SaveChangesAsync();
                     return RedirectToAction(nameof(Customers));
+                }
+                else
+                {
+                    var errors = string.Join(" | ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
+                    Console.WriteLine($"[DEBUG_LOG] ModelState invalid in CreateCustomer: {errors}");
                 }
             }
             catch (Exception ex)
@@ -117,6 +127,11 @@ namespace navigateapp.Controllers
                     await _context.SaveChangesAsync();
                     return RedirectToAction(nameof(Vehicles));
                 }
+                else
+                {
+                    var errors = string.Join(" | ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
+                    Console.WriteLine($"[DEBUG_LOG] ModelState invalid in CreateVehicle: {errors}");
+                }
             }
             catch (Exception ex)
             {
@@ -130,11 +145,18 @@ namespace navigateapp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteVehicle(int id)
         {
-            var vehicle = await _context.Vehicles.FindAsync(id);
-            if (vehicle != null)
+            try
             {
-                _context.Vehicles.Remove(vehicle);
-                await _context.SaveChangesAsync();
+                var vehicle = await _context.Vehicles.FindAsync(id);
+                if (vehicle != null)
+                {
+                    _context.Vehicles.Remove(vehicle);
+                    await _context.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DEBUG_LOG] Error deleting vehicle: {ex.Message}");
             }
             return RedirectToAction(nameof(Vehicles));
         }
@@ -162,17 +184,26 @@ namespace navigateapp.Controllers
 
         // POST: Logistics/Login
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult Login(string username, string password)
         {
-            var adminUser = _configuration["AdminCredentials:Username"] ?? "admin";
-            var adminPass = _configuration["AdminCredentials:Password"] ?? "admin123";
-
-            if (username == adminUser && password == adminPass)
+            try
             {
-                HttpContext.Session.SetString("AdminLoggedIn", "true");
-                return RedirectToAction(nameof(Admin));
+                var adminUser = _configuration["AdminCredentials:Username"] ?? "admin";
+                var adminPass = _configuration["AdminCredentials:Password"] ?? "admin123";
+
+                if (username == adminUser && password == adminPass)
+                {
+                    HttpContext.Session.SetString("AdminLoggedIn", "true");
+                    return RedirectToAction(nameof(Admin));
+                }
+                ViewBag.Error = "Invalid credentials";
             }
-            ViewBag.Error = "Invalid credentials";
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DEBUG_LOG] Error during login: {ex.Message}");
+                ViewBag.Error = "An internal error occurred.";
+            }
             return View();
         }
 
@@ -188,12 +219,21 @@ namespace navigateapp.Controllers
             return View();
         }
 
-        // API for vehicle tracking
-        [HttpGet]
-        public async Task<JsonResult> GetVehicles()
+        // API for vehicle tracking - Moved to separate ApiController for cleaner access
+    }
+
+    [Route("api/[controller]")]
+    [ApiController]
+    public class LogisticsApiController : ControllerBase
+    {
+        private readonly ApplicationDbContext _context;
+        public LogisticsApiController(ApplicationDbContext context) => _context = context;
+
+        [HttpGet("GetVehicles")]
+        public async Task<IActionResult> GetVehicles()
         {
             var vehicles = await _context.Vehicles.ToListAsync();
-            return Json(vehicles);
+            return Ok(vehicles);
         }
     }
 }
