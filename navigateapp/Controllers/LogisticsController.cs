@@ -19,7 +19,16 @@ namespace navigateapp.Controllers
         // GET: Logistics/Bills
         public async Task<IActionResult> Bills()
         {
-            return View(await _context.BillsOfLading.ToListAsync());
+            try
+            {
+                var bills = await _context.BillsOfLading.ToListAsync();
+                return View(bills ?? new List<BillOfLading>());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DEBUG_LOG] Error in Bills: {ex.Message}");
+                return View(new List<BillOfLading>());
+            }
         }
 
         // POST: Logistics/CreateBill
@@ -27,11 +36,18 @@ namespace navigateapp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateBill(BillOfLading bill)
         {
-            if (ModelState.IsValid)
+            try
             {
-                _context.Add(bill);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Bills));
+                if (ModelState.IsValid)
+                {
+                    _context.Add(bill);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Bills));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DEBUG_LOG] Error creating bill: {ex.Message}");
             }
             return View("Bills", await _context.BillsOfLading.ToListAsync());
         }
@@ -39,7 +55,16 @@ namespace navigateapp.Controllers
         // GET: Logistics/Customers
         public async Task<IActionResult> Customers()
         {
-            return View(await _context.Customers.ToListAsync());
+            try
+            {
+                var customers = await _context.Customers.ToListAsync();
+                return View(customers ?? new List<Customer>());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DEBUG_LOG] Error in Customers: {ex.Message}");
+                return View(new List<Customer>());
+            }
         }
 
         // POST: Logistics/CreateCustomer
@@ -47,11 +72,18 @@ namespace navigateapp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateCustomer(Customer customer)
         {
-            if (ModelState.IsValid)
+            try
             {
-                _context.Add(customer);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Customers));
+                if (ModelState.IsValid)
+                {
+                    _context.Add(customer);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Customers));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DEBUG_LOG] Error creating customer: {ex.Message}");
             }
             return View("Customers", await _context.Customers.ToListAsync());
         }
@@ -59,7 +91,16 @@ namespace navigateapp.Controllers
         // GET: Logistics/Vehicles
         public async Task<IActionResult> Vehicles()
         {
-            return View(await _context.Vehicles.ToListAsync());
+            try
+            {
+                var vehicles = await _context.Vehicles.ToListAsync();
+                return View(vehicles ?? new List<Vehicle>());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DEBUG_LOG] Error in Vehicles: {ex.Message}");
+                return View(new List<Vehicle>());
+            }
         }
 
         // POST: Logistics/CreateVehicle
@@ -67,12 +108,19 @@ namespace navigateapp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateVehicle(Vehicle vehicle)
         {
-            if (ModelState.IsValid)
+            try
             {
-                vehicle.LastUpdate = DateTime.Now;
-                _context.Add(vehicle);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Vehicles));
+                if (ModelState.IsValid)
+                {
+                    vehicle.LastUpdate = DateTime.Now;
+                    _context.Add(vehicle);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Vehicles));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DEBUG_LOG] Error creating vehicle: {ex.Message}");
             }
             return View("Vehicles", await _context.Vehicles.ToListAsync());
         }
